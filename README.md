@@ -40,6 +40,15 @@ the same app from the flake instead — see [Install with Nix](https://github.co
 nix run github:Azgaar/Fantasy-Map-Generator
 ```
 
+## Run locally on Windows
+
+Install Node.js 24 or newer (including npm), then double-click `start.bat` in the project root.
+The script installs dependencies with `npm ci --include=dev` if the build tools are missing,
+builds the application, and opens the local preview at
+<http://127.0.0.1:4173/Fantasy-Map-Generator/>.
+Keep the console window open while using the app; press Ctrl+C or close it to stop the server.
+If port 4173 is already in use, stop the existing server before running the script again.
+
 ## Contribution
 
 Pull requests are highly welcomed. The codebase is messy and I will appreciate if you start with minor changes. Check out the [data model](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Data-model) before contributing.

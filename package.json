@@ -28,7 +28,7 @@
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {
-    "pre-commit": "npm run lint && node scripts/sync-version.js --stage && node scripts/stamp-assets.js --stage"
+    "pre-commit": "node --run lint && node scripts/sync-version.js --stage && node scripts/stamp-assets.js --stage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
