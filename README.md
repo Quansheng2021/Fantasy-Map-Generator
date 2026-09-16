@@ -51,6 +51,10 @@ If port 4173 is already in use, stop the existing server before running the scri
 
 ## Contribution
 
+Text files use LF line endings; Windows `.bat` and `.cmd` scripts use CRLF.
+The `.gitattributes` and `.editorconfig` files enforce this convention.
+Preserve `.map` files byte-for-byte: their mixed line endings delimit map sections.
+
 Pull requests are highly welcomed. The codebase is messy and I will appreciate if you start with minor changes. Check out the [data model](https://github.com/Azgaar/Fantasy-Map-Generator/wiki/Data-model) before contributing.
 
 The codebase is gradually transitioning from **vanilla JavaScript to TypeScript** while maintaining compatibility with the existing generation pipeline and old `.map` user files.
