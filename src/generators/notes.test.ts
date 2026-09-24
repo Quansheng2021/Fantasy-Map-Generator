@@ -114,6 +114,39 @@ describe("note access", () => {
   it("names a state by its full name and a river by name and type", () => {
     expect(Notes.getEntityName({ type: "state", id: 1 })).toBe("Duchy of Ardenia");
     expect(Notes.getEntityName({ type: "river", id: 1 })).toBe("Ald River");
+    pack.rivers[1].name = "麦垄河";
+    expect(Notes.getEntityName({ type: "river", id: 1 })).toBe("麦垄河");
+  });
+});
+
+describe("added label note targets", () => {
+  it("matches a unique named place and leaves ambiguous names unlinked", () => {
+    pack.addedLabels.push({ i: 1, x: 1, y: 1, label: { text: "Mount Doom" } } as (typeof pack.addedLabels)[number]);
+    expect(Notes.resolveAddedLabelTarget(1)).toEqual({ type: "marker", id: 4 });
+    pack.zones.push({ i: 2, name: "Mount Doom", note: "A different area" } as (typeof pack.zones)[number]);
+    expect(Notes.resolveAddedLabelTarget(1)).toBeUndefined();
+  });
+
+  it("opens existing lake, river, province and settlement notes from their map labels", () => {
+    pack.rivers[1].note = "Ford below the mill";
+    pack.provinces.push({
+      i: 2,
+      name: "Ash Vale",
+      note: "A narrow mountain province"
+    } as (typeof pack.provinces)[number]);
+    for (const [i, text] of [
+      [2, "Mirror Lake"],
+      [3, "Ald"],
+      [4, "Ash Vale"],
+      [5, "Vaeltown"]
+    ] as const) {
+      pack.addedLabels.push({ i, x: 1, y: 1, label: { text } } as (typeof pack.addedLabels)[number]);
+    }
+
+    expect(Notes.resolveAddedLabelTarget(2)).toEqual({ type: "feature", id: 1 });
+    expect(Notes.resolveAddedLabelTarget(3)).toEqual({ type: "river", id: 1 });
+    expect(Notes.resolveAddedLabelTarget(4)).toEqual({ type: "province", id: 2 });
+    expect(Notes.resolveAddedLabelTarget(5)).toEqual({ type: "burg", id: 1 });
   });
 });
 

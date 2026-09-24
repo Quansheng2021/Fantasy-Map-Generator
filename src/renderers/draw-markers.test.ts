@@ -73,6 +73,47 @@ test("zoom sizing respects the rescale option and full-map export uses scale one
   expect(document.getElementById("marker1")?.getAttribute("y")).toBe("-10");
 });
 
+test("ground footprints retain geographic size through zoom and export", () => {
+  pack.markers = [{ ...marker(1, 20, 20), size: 6, mapScale: true }, marker(2, 25, 25)];
+  drawMarkers();
+  expect(document.getElementById("marker1")?.getAttribute("width")).toBe("6");
+  setViewportTransform(4, 0, 0);
+  ViewportLayers.renderNow();
+  expect(document.getElementById("marker1")?.getAttribute("width")).toBe("6");
+  expect(document.getElementById("marker1")?.getAttribute("x")).toBe("17");
+  expect(document.getElementById("marker2")?.getAttribute("width")).toBe("12");
+  const clone = document.getElementById("map")!.cloneNode(true) as SVGSVGElement;
+  ViewportLayers.renderTo(clone);
+  expect(clone.querySelector("#marker1")?.getAttribute("width")).toBe("6");
+  expect(clone.querySelector("#marker2")?.getAttribute("width")).toBe("30");
+});
+
+test("caps icon screen size without shrinking geographic footprints", () => {
+  document.getElementById("markers")!.dataset.screenSizeCap = "40";
+  styles.markers.options.rescale = 0;
+  pack.markers = [
+    { ...marker(1, 5, 5), size: 22 },
+    { ...marker(2, 5, 5), size: 22, mapScale: true }
+  ];
+  setViewportTransform(10, 0, 0);
+  drawMarkers();
+  expect(document.getElementById("marker1")?.getAttribute("width")).toBe("4");
+  expect(document.getElementById("marker2")?.getAttribute("width")).toBe("22");
+});
+
+test("map-specific icon zoom thresholds keep important geography while hiding small points", () => {
+  pack.markers = [
+    { ...marker(1, 10, 10), minZoom: 4.7 },
+    { ...marker(2, 15, 15), mapScale: true }
+  ];
+  drawMarkers();
+  expect(document.getElementById("marker1")).toBeNull();
+  expect(document.getElementById("marker2")).not.toBeNull();
+  setViewportTransform(5, 0, 0);
+  ViewportLayers.renderNow();
+  expect(document.getElementById("marker1")).not.toBeNull();
+});
+
 test("pinning, overview filters and hidden markers apply during redraw and export", () => {
   pack.markers = [marker(1), { ...marker(2), pinned: true }, { ...marker(3), pinned: true, hidden: true }];
   drawMarkers();

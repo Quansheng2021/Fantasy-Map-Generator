@@ -7,6 +7,7 @@ import type { Route } from "@/generators/routes-generator";
 import type { State } from "@/generators/states-generator";
 import type { LabelData } from "@/renderers/labels/labels";
 import type { Point } from "@/types/global";
+import { formatRiverName } from "@/utils/riverName";
 import { fitStateLabel } from "./fit-state-label";
 
 export function getLabelsData(): LabelData[] {
@@ -91,12 +92,13 @@ function buildRiverLabel(river: River): LabelData | undefined {
   const defaultPath = isPlainText(river.label)
     ? undefined
     : formatPathPoints(Rivers.addMeandering(river.cells, river.points));
+  const defaultText = formatRiverName(river.name, river.type);
   return {
     ...river.label,
     id: `riverLabel${river.i}`,
     entityId: river.i,
     type: "river",
-    text: river.label?.text ?? `${river.name} ${river.type}`,
+    text: river.label?.text ?? defaultText,
     group: river.label?.group || "river",
     anchor,
     pathPoints: customPath ?? defaultPath

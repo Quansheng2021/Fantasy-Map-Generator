@@ -13,6 +13,7 @@ import {
   getPointer,
   si
 } from "@/utils";
+import { formatRiverName } from "@/utils/riverName";
 import { showMainTip, tip } from "./tooltips";
 
 export function handleMouseMove(event: MouseEvent | TouchEvent): void {
@@ -49,17 +50,19 @@ export function showNotes(event: Event): void {
       ? `feature_${feature.dataset.f}`
       : target.id || parent?.id || grand?.id;
 
-  const ref = Notes.resolveElement(id);
-  const note = ref && Notes.get(ref);
+  if (id && currentNoteId === id) return;
 
-  if (ref && note) {
-    if (currentNoteId === id) return;
+  const ref = Notes.resolveElement(id);
+  const noteRef = ref?.type === "addedLabel" && !Notes.get(ref) ? (Notes.resolveAddedLabelTarget(ref.id) ?? ref) : ref;
+  const note = noteRef && Notes.get(noteRef);
+
+  if (noteRef && note) {
     currentNoteId = id ?? null;
 
     const notesEl = findEl("notes");
     if (notesEl) notesEl.style.display = "block";
     const header = findEl("notesHeader");
-    if (header) header.textContent = Notes.getEntityName(ref);
+    if (header) header.textContent = Notes.getEntityName(noteRef);
     const body = findEl("notesBody");
     if (body) body.innerHTML = note;
     return;
@@ -138,7 +141,7 @@ function getElementTip({ group, subgroup, target, event, path, cellId }: TipCont
   if (group === "rivers") {
     const riverId = Number(target.id.slice(5));
     const river = pack.rivers.find(river => river.i === riverId);
-    return `${river ? `${river.name} ${river.type}` : ""}. Click to edit`;
+    return `${river ? formatRiverName(river.name, river.type) : ""}. Click to edit`;
   }
 
   if (group === "routes") {

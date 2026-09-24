@@ -10,7 +10,7 @@ import "@/generators/styles";
 import { setViewportSize, setViewportTransform, viewport } from "@/components/viewport";
 import { ViewportLayers } from "@/renderers/viewport/viewport-renderer";
 import { rn } from "@/utils/numberUtils";
-import { applyZoomBehavior, setMapZoom } from "./zoom";
+import { applyZoomBehavior, invokeActiveZooming, setMapZoom } from "./zoom";
 
 beforeEach(() => {
   document.body.innerHTML = /* html */ `
@@ -83,5 +83,13 @@ describe("invokeActiveZooming", () => {
     invokeActiveZooming();
     const halo = document.getElementById("statesHalo")!;
     expect(halo.getAttribute("stroke-width")).toBe(String(rn(8 / 2 ** 0.8, 2)));
+  });
+
+  it("caps label screen size only when the map opts in", () => {
+    options.map.labels.resizeOnZoom = true;
+    document.getElementById("labels")!.dataset.screenFontCap = "450";
+    setViewportTransform(20, viewport.x, viewport.y);
+    invokeActiveZooming();
+    expect(document.getElementById("labels")!.getAttribute("font-size")).toBe("22.5px");
   });
 });

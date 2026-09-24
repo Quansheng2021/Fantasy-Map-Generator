@@ -3,6 +3,7 @@
 // hover, and the key the editors and the csv exchange use. See docs/prd/entity-notes.md
 
 import type { Point } from "@/types/global";
+import { formatRiverName } from "@/utils/riverName";
 
 export const NOTE_ENTITY_TYPES = [
   "state",
@@ -124,7 +125,7 @@ const TYPES: Record<NoteEntityType, NoteTypeDef> = {
     entity: id => byId(pack.rivers, id),
     name: id => {
       const river = byId(pack.rivers, id);
-      return river ? `${river.name} ${river.type}` : "";
+      return river ? formatRiverName(river.name, river.type) : "";
     },
     refs: () => refsOf("river", pack.rivers),
     element: id => `river${id}`,
@@ -268,6 +269,27 @@ class NotesStore {
     }
 
     return undefined;
+  }
+
+  /** Resolve a free-standing map label to the place it names when the label has no note of its own. */
+  resolveAddedLabelTarget(id: number): NoteRef | undefined {
+    const label = byId(pack.addedLabels, id);
+    if (!label) return undefined;
+
+    const targetTypes = ["zone", "marker", "route", "feature", "river", "burg", "province", "state"] as const;
+    const normalized = (name: string) => name.replace(/[·—\s|]/g, "");
+    const name = normalized(label.label.text || "");
+    if (!name) return undefined;
+
+    const matches: NoteRef[] = [];
+    for (const type of targetTypes) {
+      for (const ref of TYPES[type].refs()) {
+        if (!this.get(ref)) continue;
+        const entity = TYPES[type].entity(ref.id) as (NoteHolder & { name?: string }) | undefined;
+        if (normalized(this.getEntityName(ref)) === name || normalized(entity?.name || "") === name) matches.push(ref);
+      }
+    }
+    return matches.length === 1 ? matches[0] : undefined;
   }
 
   /** The svg element to highlight for a note. Undefined for entities that are not drawn on their own */

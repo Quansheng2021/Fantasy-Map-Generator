@@ -92,7 +92,10 @@ function redrawTracedImage(): void {
 }
 
 function applyLabelsZoomSize(): void {
-  const fontSize = Math.max(Math.round(((100 + 100 / viewport.scale) / 2) * 100) / 100, 1);
+  const labels = ensureEl<SVGGElement>("labels");
+  const cap = Number(labels.dataset.screenFontCap) || Infinity;
+  const defaultSize = Math.round(((100 + 100 / viewport.scale) / 2) * 100) / 100;
+  const fontSize = Math.max(Math.min(defaultSize, cap / viewport.scale), 1);
   select("#labels").attr("font-size", `${fontSize}px`);
 }
 

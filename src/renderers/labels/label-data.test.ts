@@ -54,6 +54,19 @@ describe("river labels with off-map cells", () => {
     expect(river?.anchor).toEqual([10, 10]);
   });
 
+  it("does not append an English river type to a Chinese name or replace an explicit label", () => {
+    stubPack([
+      { i: 1, name: "麦垄河", type: "River", cells: [0, 1], points: [] },
+      { i: 2, name: "Ald", type: "Creek", cells: [1, 2], points: [] },
+      { i: 3, name: "白盐溪", type: "Creek", cells: [2, 3], points: [], label: { text: "白盐溪上游" } }
+    ]);
+
+    const riverTexts = getLabelsData()
+      .filter(label => label.type === "river")
+      .map(label => label.text);
+    expect(riverTexts).toEqual(["麦垄河", "Ald Creek", "白盐溪上游"]);
+  });
+
   // old saves can carry rivers whose cells array was never assigned
   it("skips a river that has no cells array", () => {
     stubPack([{ i: 1, name: "Colorado", type: "River" }]);

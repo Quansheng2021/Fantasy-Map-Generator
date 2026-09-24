@@ -5,6 +5,7 @@ import { Layers } from "@/components/layers";
 import { tip } from "@/components/tooltips";
 import { GraphOverride } from "@/generators/graph-override";
 import { Notes } from "@/generators/notes";
+import { ViewportLayers } from "@/renderers/viewport/viewport-renderer";
 import { Services } from "@/services";
 import { getUsedFonts } from "@/services/fonts";
 import { savedMessage } from "@/services/platform";
@@ -77,6 +78,8 @@ function prepareMapData(): string {
   cloneEl.setAttribute("width", String(options.map.graph.width));
   cloneEl.setAttribute("height", String(options.map.graph.height));
   cloneEl.querySelector("#viewbox")?.removeAttribute("transform");
+  // The live SVG contains only viewport-materialized objects. Save the full map instead.
+  ViewportLayers.renderTo(cloneEl);
 
   // relief icons are stored in pack.relief, the layer holds only the currently visible ones
   const cloneTerrain = cloneEl.querySelector("#terrain");

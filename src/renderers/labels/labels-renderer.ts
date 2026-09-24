@@ -43,6 +43,7 @@ export function redrawLabel(label: LabelData): void {
   scene.set(stored);
   indexLabel(stored);
   materializeLabel(stored, ViewportLayers.getContext());
+  declutterLabels(document);
 }
 
 export function getSceneLabel(type: LabelType, id: number): LabelData | undefined {
@@ -83,6 +84,115 @@ function reconcileLabels(context: ViewportRenderContext): void {
   if (!labels || !textPaths) return;
 
   for (const group of options.map.labels.groups) reconcileGroup(labels, textPaths, group.name, context);
+  declutterLabels(context.root);
+}
+
+type ScreenBox = Pick<DOMRect, "left" | "top" | "right" | "bottom">;
+/** Hide overlapping labels without removing their map data. */
+function declutterLabels(root: ParentNode): void {
+  const layer = findElement(root, "labels");
+  if (!(layer instanceof SVGGElement)) return;
+  const texts = [...layer.querySelectorAll<SVGTextElement>("text[data-label-shape]")];
+  for (const text of texts) text.style.display = "";
+  if (root !== document || layer.dataset.declutter !== "priority" || options.app.labels.showAll) return;
+
+  const ranked = texts
+    .map(text => ({ text, boxes: getLabelScreenBoxes(text), priority: labelPriority(text.dataset.labelType) }))
+    .filter(({ text, boxes }) => {
+      const group = text.parentElement;
+      return boxes.length && group && Number(getComputedStyle(group).opacity) > 0;
+    })
+    .sort((a, b) => b.priority - a.priority || a.text.id.localeCompare(b.text.id));
+  // A screen-space grid keeps pan and zoom responsive when a region has many labels.
+  // Each glyph of a curved name occupies only the cells it actually touches.
+  const occupied = new Map<string, ScreenBox[]>();
+  const cellSize = 48;
+  const gap = 5;
+  for (const { text, boxes } of ranked) {
+    if (boxes.some(box => hasOccupiedNeighbor(box, occupied, cellSize, gap))) {
+      text.style.display = "none";
+    } else for (const box of boxes) occupyCells(box, occupied, cellSize, gap);
+  }
+}
+
+function cellRange(box: ScreenBox, cellSize: number, gap: number): [number, number, number, number] {
+  return [
+    Math.floor((box.left - gap) / cellSize),
+    Math.floor((box.top - gap) / cellSize),
+    Math.floor((box.right + gap) / cellSize),
+    Math.floor((box.bottom + gap) / cellSize)
+  ];
+}
+
+function hasOccupiedNeighbor(box: ScreenBox, cells: Map<string, ScreenBox[]>, cellSize: number, gap: number): boolean {
+  const [x0, y0, x1, y1] = cellRange(box, cellSize, gap);
+  const checked = new Set<ScreenBox>();
+  for (let x = x0; x <= x1; x++) {
+    for (let y = y0; y <= y1; y++) {
+      for (const other of cells.get(`${x},${y}`) || []) {
+        if (checked.has(other)) continue;
+        checked.add(other);
+        if (boxesOverlap(box, other, gap)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function occupyCells(box: ScreenBox, cells: Map<string, ScreenBox[]>, cellSize: number, gap: number): void {
+  const [x0, y0, x1, y1] = cellRange(box, cellSize, gap);
+  for (let x = x0; x <= x1; x++) {
+    for (let y = y0; y <= y1; y++) {
+      const key = `${x},${y}`;
+      const occupied = cells.get(key) || [];
+      occupied.push(box);
+      cells.set(key, occupied);
+    }
+  }
+}
+
+function boxesOverlap(a: ScreenBox, b: ScreenBox, gap: number): boolean {
+  return a.left < b.right + gap && a.right > b.left - gap && a.top < b.bottom + gap && a.bottom > b.top - gap;
+}
+
+function getLabelScreenBoxes(text: SVGTextElement): ScreenBox[] {
+  if (text.dataset.labelShape !== "path") {
+    const box = text.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 ? [box] : [];
+  }
+  const matrix = text.getScreenCTM();
+  if (!matrix) return [];
+  const boxes: ScreenBox[] = [];
+  for (let index = 0; index < text.getNumberOfChars(); index++) {
+    try {
+      const glyph = text.getExtentOfChar(index);
+      const corners = [
+        new DOMPoint(glyph.x, glyph.y),
+        new DOMPoint(glyph.x + glyph.width, glyph.y),
+        new DOMPoint(glyph.x, glyph.y + glyph.height),
+        new DOMPoint(glyph.x + glyph.width, glyph.y + glyph.height)
+      ].map(point => point.matrixTransform(matrix));
+      boxes.push({
+        left: Math.min(...corners.map(point => point.x)),
+        top: Math.min(...corners.map(point => point.y)),
+        right: Math.max(...corners.map(point => point.x)),
+        bottom: Math.max(...corners.map(point => point.y))
+      });
+    } catch {
+      return [];
+    }
+  }
+  return boxes;
+}
+
+function labelPriority(type: string | undefined): number {
+  if (type === "state") return 100;
+  if (type === "province") return 90;
+  if (type === "burg") return 80;
+  if (type === "added") return 50;
+  if (type === "river") return 25;
+  if (type === "route") return 15;
+  return 20;
 }
 
 function reconcileGroup(labels: Element, textPaths: Element, groupName: string, context: ViewportRenderContext): void {

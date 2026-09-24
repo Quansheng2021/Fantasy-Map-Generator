@@ -4,7 +4,7 @@ import { Controllers } from "@/controllers";
 import type { LabelType } from "@/generators/labels-generator";
 import { dragLegendBox } from "@/renderers/draw-legend";
 import { debounce } from "@/utils/commonUtils";
-import { handleMouseMove } from "./map-tooltip";
+import { handleMouseMove, showNotes } from "./map-tooltip";
 import { applyZoomBehavior } from "./zoom";
 
 const onMouseMove = debounce(handleMouseMove, 100);
@@ -16,9 +16,15 @@ export function applyDefaultViewboxEvents(): void {
     .style("cursor", "default")
     .on(".drag", null)
     .on("click", onClick)
+    .on("mouseover", onLabelMouseOver)
     .on("touchmove mousemove", onMouseMove);
 
   select<SVGGElement, unknown>("#legend").call(drag<SVGGElement, unknown>().on("start", dragLegendBox));
+}
+
+function onLabelMouseOver(event: MouseEvent): void {
+  const target = event.target as Element | null;
+  if (target?.closest("#labels text[data-label-type]")) showNotes(event);
 }
 
 // map group id -> editor to open. The click target is resolved by walking up its ancestors

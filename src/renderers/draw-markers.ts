@@ -4,6 +4,7 @@ import { ViewportLayers, type ViewportRenderContext } from "@/renderers/viewport
 import { isImageIcon } from "@/utils/fileUtils";
 import { rn } from "@/utils/numberUtils";
 import { escapeHtml } from "@/utils/stringUtils";
+import { drawLakeContours } from "./draw-lakes";
 
 const layer = ViewportLayers.register({ id: "markers", render: reconcileMarkers });
 let editedMarker: Marker | null = null;
@@ -51,6 +52,7 @@ export const setMarkersFilter = (ids: number[] | null): void => {
 
 export const drawMarkers = (): void => {
   TIME && console.time("drawMarkers");
+  drawLakeContours();
   layer.render();
   TIME && console.timeEnd("drawMarkers");
 };
@@ -60,6 +62,7 @@ function reconcileMarkers({ root, bounds }: ViewportRenderContext): void {
   if (!container || !Layers.isOn("markers")) return;
 
   const rescale = styles.markers.options.rescale;
+  const screenSizeCap = Number(container.dataset.screenSizeCap) || Infinity;
   const anyPinned = pack.markers.some(marker => marker.pinned);
   const selected = root === document && editedMarker ? container.querySelector(`#marker${editedMarker.i}`) : null;
   const markup: string[] = [];
@@ -67,9 +70,11 @@ function reconcileMarkers({ root, bounds }: ViewportRenderContext): void {
 
   for (const marker of pack.markers) {
     const edited = root === document && marker === editedMarker;
+    if (marker.renderLayer === "lakes" && !edited) continue;
     if (marker.hidden) continue;
     if (!edited && ((anyPinned && !marker.pinned) || (visibleMarkerIds && !visibleMarkerIds.has(marker.i)))) continue;
-    const { x, y, size } = getMarkerGeometry(marker, rescale, bounds.scale);
+    if (!edited && marker.minZoom && bounds.scale < marker.minZoom) continue;
+    const { x, y, size } = getMarkerGeometry(marker, rescale, bounds.scale, screenSizeCap);
     if (!edited && (x > bounds.x1 || y > bounds.y1 || x + size < bounds.x0 || y + size < bounds.y0)) continue;
     const html = /*html*/ `<svg id="marker${marker.i}" viewBox="0 0 30 30" width="${size}" height="${size}" x="${x}" y="${y}">${getMarkerContent(marker)}</svg>`;
     if (edited) selectedMarkup = html;
@@ -88,9 +93,16 @@ function reconcileMarkers({ root, bounds }: ViewportRenderContext): void {
   }
 }
 
-function getMarkerGeometry({ x, y, size = 30 }: Marker, rescale: number, scale: number) {
-  const zoomSize = rescale ? Math.max(rn(size / 5 + 24 / scale, 2), 1) : size;
-  return { x: rn(x - zoomSize / 2, 1), y: rn(y - zoomSize, 1), size: zoomSize };
+function getMarkerGeometry(
+  { x, y, size = 30, mapScale }: Marker,
+  rescale: number,
+  scale: number,
+  screenSizeCap = Infinity
+) {
+  const zoomSize = rescale && !mapScale ? Math.max(rn(size / 5 + 24 / scale, 2), 1) : size;
+  const cap = mapScale ? Infinity : screenSizeCap;
+  const visibleSize = Math.min(zoomSize, cap / scale);
+  return { x: rn(x - visibleSize / 2, 1), y: rn(y - visibleSize, 1), size: visibleSize };
 }
 
 function getMarkerContent({ icon, dx = 50, dy = 50, px = 12, pin, fill, stroke }: Marker): string {

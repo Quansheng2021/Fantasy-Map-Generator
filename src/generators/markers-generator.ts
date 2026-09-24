@@ -34,6 +34,9 @@ export interface Marker {
   dy?: number;
   px?: number;
   size?: number;
+  minZoom?: number; // optional map-specific visibility threshold for display, not editing data
+  mapScale?: boolean;
+  renderLayer?: "lakes";
   pin?: string;
   fill?: string;
   stroke?: string;
